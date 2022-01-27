@@ -14,6 +14,12 @@ var ident string
 var debug int
 var tformat string
 
+func init() {
+	ident = ""
+	debug = 0
+	tformat = "2006-01-02 15:04:05"
+}
+
 // init logger
 func Init(identString string, debugLevel int, timeFormat string) {
 	ident = identString
@@ -31,11 +37,8 @@ func Init(identString string, debugLevel int, timeFormat string) {
 // log error message
 func genLog(level string, format string, args ...interface{}) {
 	lck.Lock()
-	ts := ""
-	if tformat != "" {
-		ts = time.Now().Format(tformat) + " "
-	}
-	fmt.Fprintf(os.Stderr, ts+ident+"["+level+"] "+format+"\n", args...)
+	ts := time.Now().Format(tformat)
+	fmt.Fprintf(os.Stderr, ts+"|"+ident+"["+level+"] "+format+"\n", args...)
 	lck.Unlock()
 }
 
