@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/pborman/getopt/v2"
 
+	"ednode/internal/dispatcher"
 	"ednode/pkg/config"
 	"ednode/pkg/slog"
 )
@@ -15,7 +16,7 @@ func main() {
 	configFile := "./ednode.conf"
 	getopt.HelpColumn = 0
 	getopt.FlagLong(&help, "help", 'h', "Show this help")
-	getopt.FlagLong(&debug, "debug", 'd', "Set debug level")
+	getopt.FlagLong(&debug, "debug", 'd', "Set debug log level")
 	getopt.FlagLong(&configFile, "config", 'c', "Path to config file")
 	getopt.Parse()
 
@@ -33,5 +34,10 @@ func main() {
 		slog.Fatal("config failed: %s", err)
 	}
 
-	// start sources readers
+	// start main dispatcher
+	if err := dispatcher.Start(); err != nil {
+		slog.Fatal("failed to start dispatcher: %s", err)
+	}
+
+	// all done
 }
