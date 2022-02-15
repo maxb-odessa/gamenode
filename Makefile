@@ -1,17 +1,25 @@
 
 PREFIX		=	${HOME}/.local
-SHAREDIR	=	${PREFIX}/share/ednode
+SHAREDIR	=	${PREFIX}/share/gamenode
 CONFDIR		=	${PREFIX}/etc
 GOBIN		=	${PREFIX}/bin
 
 GO111MODULE	=	auto
 
-all:
-	go build ./cmd/ednode
+all: proto build
 
-install:
+build:
+	go build ./cmd/gamenode
+
+install: proto build 
 	go env -w GOBIN=${GOBIN}
-	go install ./cmd/ednode
+	go install ./cmd/gamenode
 	mkdir -p ${SHAREDIR}
-	cp -f etc/ednode.conf ${CONFDIR}
+	cp -f etc/gamenode.conf ${CONFDIR}
 
+proto: pkg/gamenodepb/gamenodepb.pb.go
+
+pkg/gamenodepb/gamenodepb.pb.go: pkg/gamenodepb/gamenodepb.proto
+	protoc  --go_out=. --go_opt=paths=source_relative \
+			--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+			pkg/gamenodepb/gamenodepb.proto

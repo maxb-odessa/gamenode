@@ -1,2 +1,2 @@
-# ednode
-Elite Dangerous I/O data node
+# gamenode
+Game I/O data node
