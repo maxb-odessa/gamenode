@@ -6,7 +6,7 @@ type File struct {
 }
 
 func Run(scope string) (interface{}, error) {
-	slog.Debug(9, "file Run")
+	slog.Debug(9, "file Run %s", scope)
 	var f File
 	return f, nil
 }

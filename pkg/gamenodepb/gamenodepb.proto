@@ -11,6 +11,15 @@ service GameNode {
     rpc Snd(stream SndEvent) returns (stream SndEvent) {}
 }
 
+message Backend {
+    enum Type {
+        FILE = 0;
+        JOY = 1;
+        KBD = 2;
+        SND = 3;
+    }
+}
+
 message Error {
     uint32 code = 1;
     string msg = 2;

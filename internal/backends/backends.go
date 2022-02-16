@@ -2,8 +2,13 @@ package backends
 
 import (
 	"fmt"
+
 	"gamenode/internal/backends/file"
 	"gamenode/internal/backends/joy"
+	"gamenode/internal/backends/kbd"
+	"gamenode/internal/backends/snd"
+
+	pb "gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
 )
@@ -14,23 +19,30 @@ type BackendHandler interface {
 	Producer() chan interface{}
 }
 
-type BackendType string
-type BackendName string
-
 // loaded and started backends
-var loadedBackends map[BackendType]map[BackendName]BackendHandler
+var loadedBackends map[pb.Backend_Type]map[string]BackendHandler
 
 type BackendRunFunc func(string) (interface{}, error)
 
 // registered backends that we support
-var registeredBackends = map[BackendType]BackendRunFunc{
-	"joy":  joy.Run,
-	"file": file.Run,
+var registeredBackends = map[pb.Backend_Type]BackendRunFunc{
+	pb.Backend_FILE: file.Run,
+	pb.Backend_JOY:  joy.Run,
+	pb.Backend_KBD:  kbd.Run,
+	pb.Backend_SND:  snd.Run,
+}
+
+// map configured backend name to protobuf const
+var backendsTypeToPbMap = map[string]pb.Backend_Type{
+	"file": pb.Backend_FILE,
+	"joy":  pb.Backend_JOY,
+	"kbd":  pb.Backend_KBD,
+	"snd":  pb.Backend_SND,
 }
 
 func Start() error {
 
-	loadedBackends = make(map[BackendType]map[BackendName]BackendHandler)
+	loadedBackends = make(map[pb.Backend_Type]map[string]BackendHandler)
 
 	// start all configured backends
 
@@ -42,22 +54,17 @@ func Start() error {
 			// it's ok, not all configured scopes are backends
 			continue
 		}
-		bkType := BackendType(bkt)
 
 		// is this backend exists/registered?
-		bkRunFunc, ok := registeredBackends[bkType]
+		bkType, ok := backendsTypeToPbMap[bkt]
 		if !ok {
-			return fmt.Errorf("backend '%s' is not supported", bkType)
+			return fmt.Errorf("backend type '%s' is not supported", bkt)
 		}
 
-		// get the name of a backend to run (mandatory)
-		bkn, err := sconf.ValAsStr(confScope, "name")
-		if err != nil {
-			return fmt.Errorf("scope '%s' has no backend name set", confScope)
-		}
-		bkName := BackendName(bkn)
+		bkName := confScope
 
 		// run selected backend and get its handler
+		bkRunFunc := registeredBackends[bkType]
 		bkHandler, err := bkRunFunc(confScope)
 		if err != nil {
 			return fmt.Errorf("failed to run backend '%s': %s", bkName, err)
@@ -65,11 +72,14 @@ func Start() error {
 
 		// save started backend handler
 		if _, ok := loadedBackends[bkType]; !ok {
-			loadedBackends[bkType] = make(map[BackendName]BackendHandler)
+			loadedBackends[bkType] = make(map[string]BackendHandler)
 		}
 		loadedBackends[bkType][bkName] = bkHandler.(BackendHandler)
 
 	}
+
+	// make a chan for each pb backend type
+	// ...
 
 	return nil
 }
