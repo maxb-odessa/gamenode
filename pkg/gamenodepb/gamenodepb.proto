@@ -5,10 +5,10 @@ package gamenodepb;
 option go_package = "gamenode/pkg/gamenodepb";
 
 service GameNode {
-    rpc File(stream FileEvent) returns (stream FileEvent) {}
-    rpc Joy(stream JoyEvent) returns (stream JoyEvent) {}
-    rpc Kbd(stream KbdEvent) returns (stream KbdEvent) {}
-    rpc Snd(stream SndEvent) returns (stream SndEvent) {}
+    rpc File(stream FileMsg) returns (stream FileMsg) {}
+    rpc Joy(stream JoyMsg) returns (stream JoyMsg) {}
+    rpc Kbd(stream KbdMsg) returns (stream KbdMsg) {}
+    rpc Snd(stream SndMsg) returns (stream SndMsg) {}
 }
 
 message Backend {
@@ -21,21 +21,20 @@ message Backend {
 }
 
 message Error {
-    uint32 code = 1;
-    string msg = 2;
+
+    enum Code {
+        OK = 0;
+        ERR = 1;
+    }
+    string name = 1;
+    Code code = 2;
+    string desc = 3;
 }
 
 message FileEvent {
     string name = 1;
 
-    message Line {
-        string line = 1;
-    }
-
-    oneof Event {
-        Line line = 10;
-        Error error = 99;
-    }
+    string line = 2;
 }
 
 
@@ -76,13 +75,12 @@ message JoyEvent {
         bool blink = 3;
     }
 
-   oneof Event {
+   oneof Obj {
         Device device = 10;
         MFD mfd = 11;
         Button button = 12;
         Hud hud = 13;
         Led led = 14;
-        Error error = 99;
     }
 }
 
@@ -99,10 +97,9 @@ message KbdEvent {
         bool on = 2;
     }
 
-   oneof Event {
+   oneof Obj {
         Key key = 10;
         Led led = 11;
-        Error error = 99;
     }
 }
 
@@ -110,15 +107,40 @@ message KbdEvent {
 message SndEvent {
     string name = 1;
  
-    message Track {
-        string id = 1;
-        uint32 volume = 2;
-        bool play = 3;
-    }
+    string track = 2;
+    uint32 volume = 3;
+    bool play = 4;
+}
 
-   oneof Event {
-        Track track = 10;
+
+
+message FileMsg {
+    oneof Msg {
+        FileEvent event = 1;
         Error error = 99;
     }
 }
+
+message JoyMsg {
+    oneof Msg {
+        JoyEvent event = 1;
+        Error error = 99;
+    }
+}
+
+message KbdMsg {
+    oneof Msg {
+        KbdEvent event = 1;
+        Error error = 99;
+    }
+}
+
+message SndMsg {
+    oneof Msg {
+        SndEvent event = 1;
+        Error error = 99;
+    }
+}
+
+
 

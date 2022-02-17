@@ -46,8 +46,8 @@ func (c *gameNodeClient) File(ctx context.Context, opts ...grpc.CallOption) (Gam
 }
 
 type GameNode_FileClient interface {
-	Send(*FileEvent) error
-	Recv() (*FileEvent, error)
+	Send(*FileMsg) error
+	Recv() (*FileMsg, error)
 	grpc.ClientStream
 }
 
@@ -55,12 +55,12 @@ type gameNodeFileClient struct {
 	grpc.ClientStream
 }
 
-func (x *gameNodeFileClient) Send(m *FileEvent) error {
+func (x *gameNodeFileClient) Send(m *FileMsg) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *gameNodeFileClient) Recv() (*FileEvent, error) {
-	m := new(FileEvent)
+func (x *gameNodeFileClient) Recv() (*FileMsg, error) {
+	m := new(FileMsg)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -77,8 +77,8 @@ func (c *gameNodeClient) Joy(ctx context.Context, opts ...grpc.CallOption) (Game
 }
 
 type GameNode_JoyClient interface {
-	Send(*JoyEvent) error
-	Recv() (*JoyEvent, error)
+	Send(*JoyMsg) error
+	Recv() (*JoyMsg, error)
 	grpc.ClientStream
 }
 
@@ -86,12 +86,12 @@ type gameNodeJoyClient struct {
 	grpc.ClientStream
 }
 
-func (x *gameNodeJoyClient) Send(m *JoyEvent) error {
+func (x *gameNodeJoyClient) Send(m *JoyMsg) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *gameNodeJoyClient) Recv() (*JoyEvent, error) {
-	m := new(JoyEvent)
+func (x *gameNodeJoyClient) Recv() (*JoyMsg, error) {
+	m := new(JoyMsg)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -108,8 +108,8 @@ func (c *gameNodeClient) Kbd(ctx context.Context, opts ...grpc.CallOption) (Game
 }
 
 type GameNode_KbdClient interface {
-	Send(*KbdEvent) error
-	Recv() (*KbdEvent, error)
+	Send(*KbdMsg) error
+	Recv() (*KbdMsg, error)
 	grpc.ClientStream
 }
 
@@ -117,12 +117,12 @@ type gameNodeKbdClient struct {
 	grpc.ClientStream
 }
 
-func (x *gameNodeKbdClient) Send(m *KbdEvent) error {
+func (x *gameNodeKbdClient) Send(m *KbdMsg) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *gameNodeKbdClient) Recv() (*KbdEvent, error) {
-	m := new(KbdEvent)
+func (x *gameNodeKbdClient) Recv() (*KbdMsg, error) {
+	m := new(KbdMsg)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -139,8 +139,8 @@ func (c *gameNodeClient) Snd(ctx context.Context, opts ...grpc.CallOption) (Game
 }
 
 type GameNode_SndClient interface {
-	Send(*SndEvent) error
-	Recv() (*SndEvent, error)
+	Send(*SndMsg) error
+	Recv() (*SndMsg, error)
 	grpc.ClientStream
 }
 
@@ -148,12 +148,12 @@ type gameNodeSndClient struct {
 	grpc.ClientStream
 }
 
-func (x *gameNodeSndClient) Send(m *SndEvent) error {
+func (x *gameNodeSndClient) Send(m *SndMsg) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *gameNodeSndClient) Recv() (*SndEvent, error) {
-	m := new(SndEvent)
+func (x *gameNodeSndClient) Recv() (*SndMsg, error) {
+	m := new(SndMsg)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -205,8 +205,8 @@ func _GameNode_File_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type GameNode_FileServer interface {
-	Send(*FileEvent) error
-	Recv() (*FileEvent, error)
+	Send(*FileMsg) error
+	Recv() (*FileMsg, error)
 	grpc.ServerStream
 }
 
@@ -214,12 +214,12 @@ type gameNodeFileServer struct {
 	grpc.ServerStream
 }
 
-func (x *gameNodeFileServer) Send(m *FileEvent) error {
+func (x *gameNodeFileServer) Send(m *FileMsg) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *gameNodeFileServer) Recv() (*FileEvent, error) {
-	m := new(FileEvent)
+func (x *gameNodeFileServer) Recv() (*FileMsg, error) {
+	m := new(FileMsg)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -231,8 +231,8 @@ func _GameNode_Joy_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type GameNode_JoyServer interface {
-	Send(*JoyEvent) error
-	Recv() (*JoyEvent, error)
+	Send(*JoyMsg) error
+	Recv() (*JoyMsg, error)
 	grpc.ServerStream
 }
 
@@ -240,12 +240,12 @@ type gameNodeJoyServer struct {
 	grpc.ServerStream
 }
 
-func (x *gameNodeJoyServer) Send(m *JoyEvent) error {
+func (x *gameNodeJoyServer) Send(m *JoyMsg) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *gameNodeJoyServer) Recv() (*JoyEvent, error) {
-	m := new(JoyEvent)
+func (x *gameNodeJoyServer) Recv() (*JoyMsg, error) {
+	m := new(JoyMsg)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -257,8 +257,8 @@ func _GameNode_Kbd_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type GameNode_KbdServer interface {
-	Send(*KbdEvent) error
-	Recv() (*KbdEvent, error)
+	Send(*KbdMsg) error
+	Recv() (*KbdMsg, error)
 	grpc.ServerStream
 }
 
@@ -266,12 +266,12 @@ type gameNodeKbdServer struct {
 	grpc.ServerStream
 }
 
-func (x *gameNodeKbdServer) Send(m *KbdEvent) error {
+func (x *gameNodeKbdServer) Send(m *KbdMsg) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *gameNodeKbdServer) Recv() (*KbdEvent, error) {
-	m := new(KbdEvent)
+func (x *gameNodeKbdServer) Recv() (*KbdMsg, error) {
+	m := new(KbdMsg)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -283,8 +283,8 @@ func _GameNode_Snd_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type GameNode_SndServer interface {
-	Send(*SndEvent) error
-	Recv() (*SndEvent, error)
+	Send(*SndMsg) error
+	Recv() (*SndMsg, error)
 	grpc.ServerStream
 }
 
@@ -292,12 +292,12 @@ type gameNodeSndServer struct {
 	grpc.ServerStream
 }
 
-func (x *gameNodeSndServer) Send(m *SndEvent) error {
+func (x *gameNodeSndServer) Send(m *SndMsg) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *gameNodeSndServer) Recv() (*SndEvent, error) {
-	m := new(SndEvent)
+func (x *gameNodeSndServer) Recv() (*SndMsg, error) {
+	m := new(SndMsg)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}

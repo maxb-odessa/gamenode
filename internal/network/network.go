@@ -3,118 +3,209 @@ package network
 import (
 	"io"
 	"net"
-	"time"
+	"sync"
 
 	"github.com/maxb-odessa/sconf"
 	"github.com/maxb-odessa/slog"
 	"google.golang.org/grpc"
 
+	"gamenode/internal/backends"
 	pb "gamenode/pkg/gamenodepb"
 )
 
 type gameNodeServer struct {
 	pb.UnimplementedGameNodeServer
 
-	name string
-	send func(interface{}) error
-	recv func() (interface{}, error)
-}
+	prodCh chan interface{}
+	consCh chan interface{}
 
-func (gns *gameNodeServer) Joy(stream pb.GameNode_JoyServer) error {
-	g := new(gameNodeServer)
-	/*
-	   	g.backs = backends.Find("File")
-	   foreach backs
-	   ctx?
-	*/
-	send := func(data interface{}) error { d := data.(pb.JoyEvent); return stream.Send(&d) }
-	recv := func() (interface{}, error) { return stream.Recv() }
-	g.send = send
-	g.recv = recv
-	g.name = "Joy"
-
-	return g.worker()
-	/*
-	   done
-
-	   wait for all to finish
-	*/
-}
-
-func (gns *gameNodeServer) File(stream pb.GameNode_FileServer) error {
-	// get File backend inch and outch
-	// gns.r, err := router.New("File"); if err != nil ...
-	// gns.Register()
-	// defer gns.Unregister()
-
-	send := func(data interface{}) error { d := data.(pb.FileEvent); return stream.Send(&d) }
-	recv := func() (interface{}, error) { return stream.Recv() }
-
-	gns1 := new(gameNodeServer)
-	gns1.send = send
-	gns1.recv = recv
-	gns1.name = "File"
-
-	return gns1.worker()
-}
-
-func (gns *gameNodeServer) worker() error {
-
-	go func() {
-		for {
-			in, err := gns.recv()
-			if err == io.EOF {
-				slog.Info("client disconnected from '%s' stream", gns.name)
-				return
-			}
-			if err != nil {
-				slog.Err("stream '%s' error: %v", gns.name, err)
-				return
-			}
-			slog.Debug(9, "stream '%s', got %+v", gns.name, in)
-
-			// send msg into toBackend chana
-			// gns.ToBackend(in)
-		}
-	}()
-
-	for {
-
-		// wait for data from fromBackend chan
-		//data := < gns.FromBackend()
-
-		/*
-			_ = &pb.FileEvent{
-					message _Line_ {
-						Name: name,
-						Line: line,
-					}
-				Name: "", //r.BackendName()
-				Event: &pb.FileEvent_Line_{
-					Line: &pb.FileEvent_Line{Name: "journal", Line: `{"some":"json"}`},
-				},
-			}
-		*/
-		/*
-			err := gns.send(*fe)
-			if err == io.EOF {
-				slog.Info("client disconnected from 'File' stream")
-				return err
-			}
-
-			if err != nil {
-				slog.Err("failed to send: %v", err)
-				return err
-			}
-		*/
-		time.Sleep(time.Second * 1)
-	}
-
-	return nil
+	name   string
+	bkType pb.Backend_Type
+	err    func(interface{}) error
+	send   func(interface{}) error
+	recv   func() (interface{}, error)
 }
 
 func newServer() *gameNodeServer {
 	return new(gameNodeServer)
+}
+
+func (gns *gameNodeServer) File(stream pb.GameNode_FileServer) error {
+
+	// make new obj for each new stream
+	g := &gameNodeServer{
+		name:   "FileStream",
+		bkType: pb.Backend_FILE,
+		send: func(data interface{}) error {
+			d := data.(pb.FileEvent)
+			m := &pb.FileMsg{
+				Msg: &pb.FileMsg_Event{Event: &d},
+			}
+			return stream.Send(m)
+		},
+		err: func(data interface{}) error {
+			d := data.(pb.Error)
+			m := &pb.FileMsg{
+				Msg: &pb.FileMsg_Error{Error: &d},
+			}
+			return stream.Send(m)
+		},
+		recv: func() (interface{}, error) {
+			return stream.Recv()
+		},
+	}
+
+	return g.worker()
+}
+
+func (gns *gameNodeServer) Joy(stream pb.GameNode_JoyServer) error {
+
+	// make new obj for each new stream
+	g := &gameNodeServer{
+		name:   "JoyStream",
+		bkType: pb.Backend_JOY,
+		send: func(data interface{}) error {
+			d := data.(pb.JoyEvent)
+			m := &pb.JoyMsg{
+				Msg: &pb.JoyMsg_Event{Event: &d},
+			}
+			return stream.Send(m)
+		},
+		err: func(data interface{}) error {
+			d := data.(pb.Error)
+			m := &pb.JoyMsg{
+				Msg: &pb.JoyMsg_Error{Error: &d},
+			}
+			return stream.Send(m)
+		},
+		recv: func() (interface{}, error) {
+			return stream.Recv()
+		},
+	}
+	// /* TEST
+	jmsg := &pb.JoyMsg{
+		Msg: &pb.JoyMsg_Event{
+			Event: &pb.JoyEvent{
+				Name: "Joyx52",
+				Obj: &pb.JoyEvent_Button_{
+					Button: &pb.JoyEvent_Button{
+						Pressed: false,
+						Color:   "BLUE"},
+				},
+			},
+		},
+	}
+	stream.Send(jmsg)
+	//*/
+
+	return g.worker()
+
+}
+
+func (gns *gameNodeServer) getProdConsCh() (err error) {
+
+	gns.prodCh, err = backends.GetProducer(gns.bkType)
+	if err != nil {
+		return
+	}
+
+	gns.consCh, err = backends.GetConsumer(gns.bkType)
+	if err != nil {
+		close(gns.prodCh)
+		return
+	}
+
+	return
+}
+
+func (gns *gameNodeServer) sendError(err error) {
+	e := pb.Error{
+		Name: gns.name,
+		Code: pb.Error_ERR,
+		Desc: err.Error(),
+	}
+	gns.err(e)
+}
+
+func (gns *gameNodeServer) worker() (err error) {
+
+	// get backend producer and consumer channels
+	if err = gns.getProdConsCh(); err != nil {
+		slog.Err("can not serve grpc stream '%s': %s", gns.name, err)
+		gns.sendError(err)
+		return
+	}
+
+	slog.Debug(1, "client connected to stream '%s'", gns.name)
+	defer slog.Debug(1, "client disconnected from stream '%s'", gns.name)
+
+	done := make(chan bool)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// start stream receiver, send data to backend consumer
+	go func() {
+		defer wg.Done()
+		defer close(gns.consCh)
+
+		// tell the sender we're done
+		defer func() { done <- true }()
+
+		for {
+
+			inData, err := gns.recv()
+
+			if err == io.EOF {
+				slog.Info("client disconnected from '%s' stream", gns.name)
+				break
+			}
+
+			if err != nil {
+				slog.Err("stream '%s' error: %s", gns.name, err)
+				break
+			}
+
+			slog.Debug(9, "stream '%s', read '%+v'", gns.name, inData)
+
+			select {
+			case gns.consCh <- inData:
+			default:
+				return
+			}
+
+		} // for...
+
+	}()
+
+	// start stream sender, read data drom backend producer
+	go func() {
+		defer wg.Done()
+		defer close(gns.prodCh)
+
+		for {
+			var outData interface{}
+
+			// wait for data from fromBackend chan
+			select {
+			case outData = <-gns.prodCh:
+			case <-done: // the reader is done (stream closed, etc)
+				return
+			}
+
+			slog.Debug(9, "stream '%s', sending %+v", gns.name, outData)
+
+			err := gns.send(outData)
+			if err != nil {
+				slog.Err("stream '%s', failed to send: %s", err)
+				break
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	return nil
 }
 
 func Start() error {

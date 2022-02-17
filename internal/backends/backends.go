@@ -11,21 +11,22 @@ import (
 	pb "gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
+	"github.com/maxb-odessa/slog"
 )
 
-type BackendHandler interface {
+type backendHandler interface {
 	Name() string
 	Consumer() chan interface{}
 	Producer() chan interface{}
 }
 
 // loaded and started backends
-var loadedBackends map[pb.Backend_Type]map[string]BackendHandler
+var loadedBackends map[pb.Backend_Type]map[string]backendHandler
 
-type BackendRunFunc func(string) (interface{}, error)
+type backendRunFunc func(string) (interface{}, error)
 
 // registered backends that we support
-var registeredBackends = map[pb.Backend_Type]BackendRunFunc{
+var registeredBackends = map[pb.Backend_Type]backendRunFunc{
 	pb.Backend_FILE: file.Run,
 	pb.Backend_JOY:  joy.Run,
 	pb.Backend_KBD:  kbd.Run,
@@ -40,9 +41,16 @@ var backendsTypeToPbMap = map[string]pb.Backend_Type{
 	"snd":  pb.Backend_SND,
 }
 
+var backendsPbToTypeMap = map[pb.Backend_Type]string{
+	pb.Backend_FILE: "file",
+	pb.Backend_JOY:  "joy",
+	pb.Backend_KBD:  "kbd",
+	pb.Backend_SND:  "snd",
+}
+
 func Start() error {
 
-	loadedBackends = make(map[pb.Backend_Type]map[string]BackendHandler)
+	loadedBackends = make(map[pb.Backend_Type]map[string]backendHandler)
 
 	// start all configured backends
 
@@ -72,14 +80,51 @@ func Start() error {
 
 		// save started backend handler
 		if _, ok := loadedBackends[bkType]; !ok {
-			loadedBackends[bkType] = make(map[string]BackendHandler)
+			loadedBackends[bkType] = make(map[string]backendHandler)
 		}
-		loadedBackends[bkType][bkName] = bkHandler.(BackendHandler)
+		loadedBackends[bkType][bkName] = bkHandler.(backendHandler)
 
 	}
 
-	// make a chan for each pb backend type
-	// ...
-
 	return nil
+}
+
+func GetProducer(bkType pb.Backend_Type) (chan interface{}, error) {
+
+	bkTypeStr := backendsPbToTypeMap[bkType]
+
+	retCh := make(chan interface{})
+
+	lbk, ok := loadedBackends[bkType]
+	if !ok {
+		return nil, fmt.Errorf("no backends of type '%s' running", bkTypeStr)
+	}
+
+	for bkn, bkh := range lbk {
+
+		slog.Debug(5, "connecting backend '%s' producer chan to general '%s' chan", bkn, bkTypeStr)
+		go func(bkCh chan interface{}) {
+			for {
+				select {
+				case data := <-bkCh:
+					select {
+					case retCh <- data:
+					default:
+						slog.Debug(5, "disconnecting backend '%s' producer chan from general '%s' chan", bkn, bkTypeStr)
+						return
+					}
+				}
+			}
+		}(bkh.Producer())
+
+	}
+
+	return retCh, nil
+}
+
+func GetConsumer(bkType pb.Backend_Type) (chan interface{}, error) {
+
+	retCh := make(chan interface{})
+
+	return retCh, nil
 }
