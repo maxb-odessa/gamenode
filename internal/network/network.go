@@ -84,9 +84,9 @@ func (gns *gameNodeServer) Joy(stream pb.GameNode_JoyServer) error {
 	}
 	// /* TEST
 	jmsg := &pb.JoyMsg{
+		Name: "x52pro",
 		Msg: &pb.JoyMsg_Event{
 			Event: &pb.JoyEvent{
-				Name: "Joyx52",
 				Obj: &pb.JoyEvent_Button_{
 					Button: &pb.JoyEvent_Button{
 						Pressed: false,
@@ -100,6 +100,62 @@ func (gns *gameNodeServer) Joy(stream pb.GameNode_JoyServer) error {
 
 	return g.worker()
 
+}
+
+func (gns *gameNodeServer) Kbd(stream pb.GameNode_KbdServer) error {
+
+	// make new obj for each new stream
+	g := &gameNodeServer{
+		name:   "KbdStream",
+		bkType: pb.Backend_KBD,
+		send: func(data interface{}) error {
+			d := data.(pb.KbdEvent)
+			m := &pb.KbdMsg{
+				Msg: &pb.KbdMsg_Event{Event: &d},
+			}
+			return stream.Send(m)
+		},
+		err: func(data interface{}) error {
+			d := data.(pb.Error)
+			m := &pb.KbdMsg{
+				Msg: &pb.KbdMsg_Error{Error: &d},
+			}
+			return stream.Send(m)
+		},
+		recv: func() (interface{}, error) {
+			return stream.Recv()
+		},
+	}
+
+	return g.worker()
+}
+
+func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
+
+	// make new obj for each new stream
+	g := &gameNodeServer{
+		name:   "SndStream",
+		bkType: pb.Backend_SND,
+		send: func(data interface{}) error {
+			d := data.(pb.SndEvent)
+			m := &pb.SndMsg{
+				Msg: &pb.SndMsg_Event{Event: &d},
+			}
+			return stream.Send(m)
+		},
+		err: func(data interface{}) error {
+			d := data.(pb.Error)
+			m := &pb.SndMsg{
+				Msg: &pb.SndMsg_Error{Error: &d},
+			}
+			return stream.Send(m)
+		},
+		recv: func() (interface{}, error) {
+			return stream.Recv()
+		},
+	}
+
+	return g.worker()
 }
 
 func (gns *gameNodeServer) getProdConsCh() (err error) {
@@ -120,8 +176,7 @@ func (gns *gameNodeServer) getProdConsCh() (err error) {
 
 func (gns *gameNodeServer) sendError(err error) {
 	e := pb.Error{
-		Name: gns.name,
-		Code: pb.Error_ERR,
+		Code: 1,
 		Desc: err.Error(),
 	}
 	gns.err(e)

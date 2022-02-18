@@ -21,25 +21,16 @@ message Backend {
 }
 
 message Error {
-
-    enum Code {
-        OK = 0;
-        ERR = 1;
-    }
-    string name = 1;
-    Code code = 2;
-    string desc = 3;
+    uint32 code = 1;
+    string desc = 2;
 }
 
 message FileEvent {
-    string name = 1;
-
-    string line = 2;
+    string line = 1;
 }
 
 
 message JoyEvent {
-    string name = 1;
  
     message Device {
         bool blink = 1;
@@ -85,7 +76,6 @@ message JoyEvent {
 }
 
 message KbdEvent {
-    string name = 1;
  
     message Key {
         string id = 1;
@@ -105,39 +95,41 @@ message KbdEvent {
 
 
 message SndEvent {
-    string name = 1;
- 
-    string track = 2;
-    uint32 volume = 3;
-    bool play = 4;
+    string track = 1;
+    uint32 volume = 2;
+    bool play = 3;
 }
 
 
 
 message FileMsg {
+    string name = 1;
     oneof Msg {
-        FileEvent event = 1;
+        FileEvent event = 2;
         Error error = 99;
     }
 }
 
 message JoyMsg {
+    string name = 1;
     oneof Msg {
-        JoyEvent event = 1;
+        JoyEvent event = 2;
         Error error = 99;
     }
 }
 
 message KbdMsg {
+    string name = 1;
     oneof Msg {
-        KbdEvent event = 1;
+        KbdEvent event = 2;
         Error error = 99;
     }
 }
 
 message SndMsg {
+    string name = 1;
     oneof Msg {
-        SndEvent event = 1;
+        SndEvent event = 2;
         Error error = 99;
     }
 }

@@ -41,7 +41,8 @@ func runJoy(client pb.GameNodeClient) {
 	jb := pb.JoyEvent_Button_{Button: &pb.JoyEvent_Button{Pressed: true, Color: "red"}}
 	jd := pb.JoyEvent{Obj: &jb}
 	jmsg := &pb.JoyMsg{
-		Msg: &pb.JoyMsg_Event{Event: &jd},
+		Name: "X52PRO",
+		Msg:  &pb.JoyMsg_Event{Event: &jd},
 	}
 
 	if err := stream.Send(jmsg); err != nil {
