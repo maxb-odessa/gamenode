@@ -16,12 +16,8 @@ import (
 type gameNodeServer struct {
 	pb.UnimplementedGameNodeServer
 
-	prodCh chan interface{}
-	consCh chan interface{}
-
 	name   string
 	bkType pb.Backend_Type
-	err    func(interface{}) error
 	send   func(interface{}) error
 	recv   func() (interface{}, error)
 }
@@ -36,19 +32,9 @@ func (gns *gameNodeServer) File(stream pb.GameNode_FileServer) error {
 	g := &gameNodeServer{
 		name:   "FileStream",
 		bkType: pb.Backend_FILE,
-		send: func(data interface{}) error {
-			d := data.(pb.FileEvent)
-			m := &pb.FileMsg{
-				Msg: &pb.FileMsg_Event{Event: &d},
-			}
-			return stream.Send(m)
-		},
-		err: func(data interface{}) error {
-			d := data.(pb.Error)
-			m := &pb.FileMsg{
-				Msg: &pb.FileMsg_Error{Error: &d},
-			}
-			return stream.Send(m)
+		send: func(m interface{}) error {
+			d := m.(pb.FileMsg)
+			return stream.Send(&d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
@@ -64,39 +50,14 @@ func (gns *gameNodeServer) Joy(stream pb.GameNode_JoyServer) error {
 	g := &gameNodeServer{
 		name:   "JoyStream",
 		bkType: pb.Backend_JOY,
-		send: func(data interface{}) error {
-			d := data.(pb.JoyEvent)
-			m := &pb.JoyMsg{
-				Msg: &pb.JoyMsg_Event{Event: &d},
-			}
-			return stream.Send(m)
-		},
-		err: func(data interface{}) error {
-			d := data.(pb.Error)
-			m := &pb.JoyMsg{
-				Msg: &pb.JoyMsg_Error{Error: &d},
-			}
-			return stream.Send(m)
+		send: func(m interface{}) error {
+			d := m.(pb.JoyMsg)
+			return stream.Send(&d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
 		},
 	}
-	// /* TEST
-	jmsg := &pb.JoyMsg{
-		Name: "x52pro",
-		Msg: &pb.JoyMsg_Event{
-			Event: &pb.JoyEvent{
-				Obj: &pb.JoyEvent_Button_{
-					Button: &pb.JoyEvent_Button{
-						Pressed: false,
-						Color:   "BLUE"},
-				},
-			},
-		},
-	}
-	stream.Send(jmsg)
-	//*/
 
 	return g.worker()
 
@@ -108,19 +69,9 @@ func (gns *gameNodeServer) Kbd(stream pb.GameNode_KbdServer) error {
 	g := &gameNodeServer{
 		name:   "KbdStream",
 		bkType: pb.Backend_KBD,
-		send: func(data interface{}) error {
-			d := data.(pb.KbdEvent)
-			m := &pb.KbdMsg{
-				Msg: &pb.KbdMsg_Event{Event: &d},
-			}
-			return stream.Send(m)
-		},
-		err: func(data interface{}) error {
-			d := data.(pb.Error)
-			m := &pb.KbdMsg{
-				Msg: &pb.KbdMsg_Error{Error: &d},
-			}
-			return stream.Send(m)
+		send: func(m interface{}) error {
+			d := m.(pb.KbdMsg)
+			return stream.Send(&d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
@@ -136,19 +87,9 @@ func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
 	g := &gameNodeServer{
 		name:   "SndStream",
 		bkType: pb.Backend_SND,
-		send: func(data interface{}) error {
-			d := data.(pb.SndEvent)
-			m := &pb.SndMsg{
-				Msg: &pb.SndMsg_Event{Event: &d},
-			}
-			return stream.Send(m)
-		},
-		err: func(data interface{}) error {
-			d := data.(pb.Error)
-			m := &pb.SndMsg{
-				Msg: &pb.SndMsg_Error{Error: &d},
-			}
-			return stream.Send(m)
+		send: func(m interface{}) error {
+			d := m.(pb.SndMsg)
+			return stream.Send(&d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
@@ -158,38 +99,14 @@ func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
 	return g.worker()
 }
 
-func (gns *gameNodeServer) getProdConsCh() (err error) {
-
-	gns.prodCh, err = backends.GetProducer(gns.bkType)
-	if err != nil {
-		return
-	}
-
-	gns.consCh, err = backends.GetConsumer(gns.bkType)
-	if err != nil {
-		close(gns.prodCh)
-		return
-	}
-
-	return
-}
-
-func (gns *gameNodeServer) sendError(err error) {
-	e := pb.Error{
-		Code: 1,
-		Desc: err.Error(),
-	}
-	gns.err(e)
-}
-
 func (gns *gameNodeServer) worker() (err error) {
 
-	// get backend producer and consumer channels
-	if err = gns.getProdConsCh(); err != nil {
-		slog.Err("can not serve grpc stream '%s': %s", gns.name, err)
-		gns.sendError(err)
-		return
-	}
+	// subscribe to backend channels
+
+	pubsub := backends.GetNetPubsub()
+	defer pubsub.Unsubscribe()
+
+	consumerCh := pubsub.Subscribe(gns.bkType | backends.NET_CONSUMER)
 
 	slog.Debug(1, "client connected to stream '%s'", gns.name)
 	defer slog.Debug(1, "client disconnected from stream '%s'", gns.name)
@@ -199,10 +116,9 @@ func (gns *gameNodeServer) worker() (err error) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// start stream receiver, send data to backend consumer
+	// start stream receiver, send data to backends
 	go func() {
 		defer wg.Done()
-		defer close(gns.consCh)
 
 		// tell the sender we're done
 		defer func() { done <- true }()
@@ -212,7 +128,6 @@ func (gns *gameNodeServer) worker() (err error) {
 			inData, err := gns.recv()
 
 			if err == io.EOF {
-				slog.Info("client disconnected from '%s' stream", gns.name)
 				break
 			}
 
@@ -223,11 +138,8 @@ func (gns *gameNodeServer) worker() (err error) {
 
 			slog.Debug(9, "stream '%s', read '%+v'", gns.name, inData)
 
-			select {
-			case gns.consCh <- inData:
-			default:
-				return
-			}
+			// send the data to backends
+			pubsub.Publish(gns.bkType|backends.NET_PUBLISHER, inData)
 
 		} // for...
 
@@ -236,19 +148,18 @@ func (gns *gameNodeServer) worker() (err error) {
 	// start stream sender, read data drom backend producer
 	go func() {
 		defer wg.Done()
-		defer close(gns.prodCh)
+
+		var outData interface{}
 
 		for {
-			var outData interface{}
-
 			// wait for data from fromBackend chan
 			select {
-			case outData = <-gns.prodCh:
 			case <-done: // the reader is done (stream closed, etc)
 				return
+			case outData = <-consumerCh:
 			}
 
-			slog.Debug(9, "stream '%s', sending %+v", gns.name, outData)
+			slog.Debug(99, "stream '%s', sending %+v", gns.name, outData)
 
 			err := gns.send(outData)
 			if err != nil {

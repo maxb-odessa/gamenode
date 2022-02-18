@@ -2,6 +2,7 @@ package backends
 
 import (
 	"fmt"
+	"sync"
 
 	"gamenode/internal/backends/file"
 	"gamenode/internal/backends/joy"
@@ -11,7 +12,6 @@ import (
 	pb "gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
-	"github.com/maxb-odessa/slog"
 )
 
 type backendHandler interface {
@@ -86,9 +86,114 @@ func Start() error {
 
 	}
 
+	// create pubsub object for network module comms
+	netPubsub = NewPubsub()
+
+	// do the same for backends, subscribe them
+
+	/*
+		go func() {
+			ch := netPubsub.Subscribe(2)
+
+			// make bk-net broker, send only matched msgs (NET chan)
+			// bks must subs to another chan (BK chan)
+			for {
+
+				select {
+				case d := <-ch:
+					slog.Info("BR: got '%+v'", d)
+				default:
+				}
+
+				jmsg := pb.JoyMsg{
+					Name: "x52pro",
+					Msg: &pb.JoyMsg_Event{
+						Event: &pb.JoyEvent{
+							Obj: &pb.JoyEvent_Button_{
+								Button: &pb.JoyEvent_Button{
+									Pressed: false,
+									Color:   "BLUE"},
+							},
+						},
+					},
+				}
+
+				PS.Publish(1, jmsg)
+				//slog.Info("BR: pub data")
+
+				time.Sleep(time.Second * 1)
+
+			}
+		}()
+	*/
+
 	return nil
 }
 
+const (
+	NET_CONSUMER  = 1
+	NET_PUBLISHER = 2
+)
+
+var netPubsub *Pubsub
+
+func GetNetPubsub() *Pubsub {
+	return netPubsub
+}
+
+// https://eli.thegreenplace.net/2020/pubsub-using-channels-in-go/
+
+type Pubsub struct {
+	sync.RWMutex
+	subs   map[pb.Backend_Type][]chan interface{}
+	closed bool
+}
+
+func NewPubsub() *Pubsub {
+	ps := &Pubsub{}
+	ps.subs = make(map[pb.Backend_Type][]chan interface{})
+	return ps
+}
+
+func (ps *Pubsub) Subscribe(topic pb.Backend_Type) <-chan interface{} {
+	ps.Lock()
+	defer ps.Unlock()
+
+	ch := make(chan interface{}, 8)
+	ps.subs[topic] = append(ps.subs[topic], ch)
+	return ch
+}
+
+func (ps *Pubsub) Publish(topic pb.Backend_Type, msg interface{}) {
+	ps.RLock()
+	defer ps.RUnlock()
+
+	if ps.closed {
+		return
+	}
+
+	for _, ch := range ps.subs[topic] {
+		go func(ch chan interface{}) {
+			ch <- msg
+		}(ch)
+	}
+}
+
+func (ps *Pubsub) Unsubscribe() {
+	ps.Lock()
+	defer ps.Unlock()
+
+	if !ps.closed {
+		ps.closed = true
+		for _, subs := range ps.subs {
+			for _, ch := range subs {
+				close(ch)
+			}
+		}
+	}
+}
+
+/*
 func GetProducer(bkType pb.Backend_Type) (chan interface{}, error) {
 
 	bkTypeStr := backendsPbToTypeMap[bkType]
@@ -128,3 +233,4 @@ func GetConsumer(bkType pb.Backend_Type) (chan interface{}, error) {
 
 	return retCh, nil
 }
+*/
