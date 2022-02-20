@@ -7,6 +7,7 @@ import (
 
 	"github.com/maxb-odessa/sconf"
 	"github.com/maxb-odessa/slog"
+
 	"google.golang.org/grpc"
 
 	"gamenode/internal/backends"
@@ -16,7 +17,7 @@ import (
 type gameNodeServer struct {
 	pb.UnimplementedGameNodeServer
 
-	name   string
+	bkName string
 	bkType pb.Backend_Type
 	send   func(interface{}) error
 	recv   func() (interface{}, error)
@@ -30,7 +31,7 @@ func (gns *gameNodeServer) File(stream pb.GameNode_FileServer) error {
 
 	// make new obj for each new stream
 	g := &gameNodeServer{
-		name:   "FileStream",
+		bkName: pb.Backend_Type_name[int32(pb.Backend_FILE)],
 		bkType: pb.Backend_FILE,
 		send: func(m interface{}) error {
 			d := m.(pb.FileMsg)
@@ -48,7 +49,7 @@ func (gns *gameNodeServer) Joy(stream pb.GameNode_JoyServer) error {
 
 	// make new obj for each new stream
 	g := &gameNodeServer{
-		name:   "JoyStream",
+		bkName: pb.Backend_Type_name[int32(pb.Backend_JOY)],
 		bkType: pb.Backend_JOY,
 		send: func(m interface{}) error {
 			d := m.(pb.JoyMsg)
@@ -67,7 +68,7 @@ func (gns *gameNodeServer) Kbd(stream pb.GameNode_KbdServer) error {
 
 	// make new obj for each new stream
 	g := &gameNodeServer{
-		name:   "KbdStream",
+		bkName: pb.Backend_Type_name[int32(pb.Backend_KBD)],
 		bkType: pb.Backend_KBD,
 		send: func(m interface{}) error {
 			d := m.(pb.KbdMsg)
@@ -85,7 +86,7 @@ func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
 
 	// make new obj for each new stream
 	g := &gameNodeServer{
-		name:   "SndStream",
+		bkName: pb.Backend_Type_name[int32(pb.Backend_SND)],
 		bkType: pb.Backend_SND,
 		send: func(m interface{}) error {
 			d := m.(pb.SndMsg)
@@ -102,14 +103,11 @@ func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
 func (gns *gameNodeServer) worker() (err error) {
 
 	// subscribe to backend channels
+	consumerCh := backends.NetSubscribe(gns.bkType | backends.CONSUMER)
+	defer backends.NetUnsubscribe(consumerCh)
 
-	pubsub := backends.GetNetPubsub()
-	defer pubsub.Unsubscribe()
-
-	consumerCh := pubsub.Subscribe(gns.bkType | backends.NET_CONSUMER)
-
-	slog.Debug(1, "client connected to stream '%s'", gns.name)
-	defer slog.Debug(1, "client disconnected from stream '%s'", gns.name)
+	slog.Debug(1, "client connected to stream '%s'", gns.bkName)
+	defer slog.Debug(1, "client disconnected from stream '%s'", gns.bkName)
 
 	done := make(chan bool)
 
@@ -132,14 +130,14 @@ func (gns *gameNodeServer) worker() (err error) {
 			}
 
 			if err != nil {
-				slog.Err("stream '%s' error: %s", gns.name, err)
+				slog.Err("stream '%s' error: %s", gns.bkName, err)
 				break
 			}
 
-			slog.Debug(9, "stream '%s', read '%+v'", gns.name, inData)
+			slog.Debug(9, "stream '%s', read '%+v'", gns.bkName, inData)
 
 			// send the data to backends
-			pubsub.Publish(gns.bkType|backends.NET_PUBLISHER, inData)
+			backends.NetPublish(gns.bkType|backends.PRODUCER, inData)
 
 		} // for...
 
@@ -159,7 +157,7 @@ func (gns *gameNodeServer) worker() (err error) {
 			case outData = <-consumerCh:
 			}
 
-			slog.Debug(99, "stream '%s', sending %+v", gns.name, outData)
+			slog.Debug(99, "stream '%s', sending %+v", gns.bkName, outData)
 
 			err := gns.send(outData)
 			if err != nil {

@@ -2,16 +2,17 @@ package backends
 
 import (
 	"fmt"
-	"sync"
 
 	"gamenode/internal/backends/file"
 	"gamenode/internal/backends/joy"
 	"gamenode/internal/backends/kbd"
 	"gamenode/internal/backends/snd"
+	"gamenode/internal/pubsub"
 
 	pb "gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
+	"github.com/maxb-odessa/slog"
 )
 
 type backendHandler interface {
@@ -33,27 +34,68 @@ var registeredBackends = map[pb.Backend_Type]backendRunFunc{
 	pb.Backend_SND:  snd.Run,
 }
 
-// map configured backend name to protobuf const
-var backendsTypeToPbMap = map[string]pb.Backend_Type{
-	"file": pb.Backend_FILE,
-	"joy":  pb.Backend_JOY,
-	"kbd":  pb.Backend_KBD,
-	"snd":  pb.Backend_SND,
+const (
+	CONSUMER = 0x1000
+	PRODUCER = 0x2000
+)
+
+var netPubsub *pubsub.Pubsub
+var bkPubsub *pubsub.Pubsub
+
+func NetSubscribe(bkt pb.Backend_Type) <-chan interface{} {
+	return netPubsub.Subscribe(pubsub.Topic(bkt))
 }
 
-var backendsPbToTypeMap = map[pb.Backend_Type]string{
-	pb.Backend_FILE: "file",
-	pb.Backend_JOY:  "joy",
-	pb.Backend_KBD:  "kbd",
-	pb.Backend_SND:  "snd",
+func NetPublish(bkt pb.Backend_Type, msg interface{}) {
+	netPubsub.Publish(pubsub.Topic(bkt), msg)
+}
+
+func NetUnsubscribe(ch <-chan interface{}) {
+	netPubsub.Unsubscribe(ch)
+}
+
+func BkSubscribe(bkt pb.Backend_Type) <-chan interface{} {
+	return bkPubsub.Subscribe(pubsub.Topic(bkt))
+}
+
+func BkPublish(bkt pb.Backend_Type, msg interface{}) {
+	bkPubsub.Publish(pubsub.Topic(bkt), msg)
+}
+
+func BkUnsubscribe(ch <-chan interface{}) {
+	bkPubsub.Unsubscribe(ch)
+}
+
+func processNetToBkReq(bkType pb.Backend_Type, bkList map[string]backendHandler) {
+
+	slog.Debug(9, "started processing net->bk reqs for '%s'", pb.Backend_Type_name[int32(bkType)])
+	defer slog.Debug(9, "stopped processing net->bk reqs for '%s'", pb.Backend_Type_name[int32(bkType)])
+
+	ch := NetSubscribe(bkType | PRODUCER)
+
+	for {
+		select {
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			slog.Debug(5, "got net msg: %+v", msg)
+			// find running backend with NAME, get its Consumer and send msg into it
+		}
+	}
 }
 
 func Start() error {
 
 	loadedBackends = make(map[pb.Backend_Type]map[string]backendHandler)
 
-	// start all configured backends
+	// create pubsub object for network module comms
+	netPubsub = pubsub.NewPubsub()
 
+	// create pubsub object for backends comms
+	bkPubsub = pubsub.NewPubsub()
+
+	// start all configured backends
 	for _, confScope := range sconf.Scopes() {
 
 		// which backend type to run
@@ -64,12 +106,16 @@ func Start() error {
 		}
 
 		// is this backend exists/registered?
-		bkType, ok := backendsTypeToPbMap[bkt]
-		if !ok {
+		var bkType pb.Backend_Type
+		if b, ok := pb.Backend_Type_value[bkt]; !ok {
 			return fmt.Errorf("backend type '%s' is not supported", bkt)
+		} else {
+			bkType = pb.Backend_Type(b)
 		}
 
 		bkName := confScope
+
+		// subscribe the backend to pubsub channel
 
 		// run selected backend and get its handler
 		bkRunFunc := registeredBackends[bkType]
@@ -86,10 +132,15 @@ func Start() error {
 
 	}
 
-	// create pubsub object for network module comms
-	netPubsub = NewPubsub()
-
 	// do the same for backends, subscribe them
+
+	// make chan for eath bktype, set this chan in each bk of type bktype as producer
+	// select on all bktype chans, if has data - netPublish(bktype, msg)
+
+	// run network "listeners"
+	for bkType, bkList := range loadedBackends {
+		go processNetReq(bkType, bkList)
+	}
 
 	/*
 		go func() {
@@ -128,69 +179,6 @@ func Start() error {
 	*/
 
 	return nil
-}
-
-const (
-	NET_CONSUMER  = 1
-	NET_PUBLISHER = 2
-)
-
-var netPubsub *Pubsub
-
-func GetNetPubsub() *Pubsub {
-	return netPubsub
-}
-
-// https://eli.thegreenplace.net/2020/pubsub-using-channels-in-go/
-
-type Pubsub struct {
-	sync.RWMutex
-	subs   map[pb.Backend_Type][]chan interface{}
-	closed bool
-}
-
-func NewPubsub() *Pubsub {
-	ps := &Pubsub{}
-	ps.subs = make(map[pb.Backend_Type][]chan interface{})
-	return ps
-}
-
-func (ps *Pubsub) Subscribe(topic pb.Backend_Type) <-chan interface{} {
-	ps.Lock()
-	defer ps.Unlock()
-
-	ch := make(chan interface{}, 8)
-	ps.subs[topic] = append(ps.subs[topic], ch)
-	return ch
-}
-
-func (ps *Pubsub) Publish(topic pb.Backend_Type, msg interface{}) {
-	ps.RLock()
-	defer ps.RUnlock()
-
-	if ps.closed {
-		return
-	}
-
-	for _, ch := range ps.subs[topic] {
-		go func(ch chan interface{}) {
-			ch <- msg
-		}(ch)
-	}
-}
-
-func (ps *Pubsub) Unsubscribe() {
-	ps.Lock()
-	defer ps.Unlock()
-
-	if !ps.closed {
-		ps.closed = true
-		for _, subs := range ps.subs {
-			for _, ch := range subs {
-				close(ch)
-			}
-		}
-	}
 }
 
 /*

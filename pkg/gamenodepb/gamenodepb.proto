@@ -106,32 +106,36 @@ message FileMsg {
     string name = 1;
     oneof Msg {
         FileEvent event = 2;
-        Error error = 99;
+        Error error = 9;
     }
+    int32 seqNo = 99;
 }
 
 message JoyMsg {
     string name = 1;
     oneof Msg {
         JoyEvent event = 2;
-        Error error = 99;
+        Error error = 9;
     }
+    int32 seqNo = 99;
 }
 
 message KbdMsg {
     string name = 1;
     oneof Msg {
         KbdEvent event = 2;
-        Error error = 99;
+        Error error = 9;
     }
+    int32 seqNo = 99;
 }
 
 message SndMsg {
     string name = 1;
     oneof Msg {
         SndEvent event = 2;
-        Error error = 99;
+        Error error = 9;
     }
+    int32 seqNo = 99;
 }
 
 
