@@ -194,7 +194,7 @@ func Run(brk *pubsub.Pubsub) error {
 	broker = brk
 
 	slog.Info("accepting gRPC at %s", addrPort)
-	grpcServer.Serve(lstn)
+	go grpcServer.Serve(lstn)
 
 	return nil
 }

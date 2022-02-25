@@ -2,15 +2,21 @@ package router
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"gamenode/internal/backends"
 	"gamenode/internal/network"
 	"gamenode/internal/pubsub"
+	pb "gamenode/pkg/gamenodepb"
 
 	_ "gamenode/internal/backends/file"
 	_ "gamenode/internal/backends/joy"
 	_ "gamenode/internal/backends/kbd"
 	_ "gamenode/internal/backends/snd"
+
+	"github.com/maxb-odessa/slog"
 )
 
 func Start() error {
@@ -37,15 +43,61 @@ func Start() error {
 
 func doRouting(bksBroker *pubsub.Pubsub, netBroker *pubsub.Pubsub) error {
 
-	// subs to all nets (joy, file, etc) // pb.Backend_Type + pubsub.CONSUMER, PRODUCER
+	bkList := []pb.Backend_Type{
+		pb.Backend_FILE,
+		pb.Backend_JOY,
+		pb.Backend_KBD,
+		pb.Backend_SND,
+	}
 
-	// subs to all backs (joy, file, etc) // pb.Backend_Type + pubsub.CONSUMER, PRODUCER
+	for _, bkt := range bkList {
 
-	// go: select all net subsed chans
-	// examine and publish to corresponding back chan (joy, file, etc)
+		// establish bridges net->backend for each backend type
+		go func(bkType pb.Backend_Type) {
+			ch := netBroker.Subscribe(pubsub.Topic(bkType | pubsub.PRODUCER))
+			defer netBroker.Unsubscribe(ch)
+			for {
+				select {
+				case msg, ok := <-ch:
+					if !ok {
+						return
+					}
+					bksBroker.Publish(pubsub.Topic(bkType|pubsub.CONSUMER), msg)
+				}
+			}
+		}(bkt)
 
-	// go: select all back subsed chans
-	// examine and publish to corresponding net chan (joy, file, etc)
+		// establish bridges backend->net for each backend type
+		go func(bkType pb.Backend_Type) {
+			ch := bksBroker.Subscribe(pubsub.Topic(bkType | pubsub.PRODUCER))
+			defer bksBroker.Unsubscribe(ch)
+			for {
+				select {
+				case msg, ok := <-ch:
+					if !ok {
+						return
+					}
+					netBroker.Publish(pubsub.Topic(bkType|pubsub.CONSUMER), msg)
+				}
+			}
+		}(bkt)
+	}
+
+	// wait for a system signal
+	done := make(chan bool)
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		for sig := range sigChan {
+			slog.Info("got signal %d\n", sig)
+			done <- true
+		}
+	}()
+
+	<-done
+
+	// TODO: graceful exit, cleanups
+	slog.Info("stopped")
 
 	return nil
 }

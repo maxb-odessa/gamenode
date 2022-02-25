@@ -34,7 +34,7 @@ func (j Joy) producer(broker *pubsub.Pubsub) {
 }
 
 func (j Joy) consumer(broker *pubsub.Pubsub) {
-	ch := broker.Subscribe(pubsub.Topic(pb.Backend_JOY + pubsub.CONSUMER))
+	ch := broker.Subscribe(pubsub.Topic(pb.Backend_JOY | pubsub.CONSUMER))
 	defer broker.Unsubscribe(ch)
 	for {
 		slog.Debug(9, "BK %s, consuming", j.name)
