@@ -1,24 +1,20 @@
 package file
 
-import "github.com/maxb-odessa/slog"
+import (
+	"gamenode/internal/pubsub"
+
+	"github.com/maxb-odessa/slog"
+)
 
 type File struct {
+	name string
 }
 
-func Run(scope string) (interface{}, error) {
-	slog.Debug(9, "file Run %s", scope)
-	var f File
-	return f, nil
+func Init(confScope string) (interface{}, error) {
+	slog.Debug(9, "file INIT %s", confScope)
+	return File{name: confScope}, nil
 }
 
-func (f File) Name() string {
-	return "file name"
-}
-
-func (f File) Consumer() chan interface{} {
-	return make(chan interface{})
-}
-
-func (f File) Producer() chan interface{} {
-	return make(chan interface{})
+func (j File) Run(broker *pubsub.Pubsub) error {
+	return nil
 }

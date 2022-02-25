@@ -10,7 +10,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"gamenode/internal/backends"
+	"gamenode/internal/pubsub"
 	pb "gamenode/pkg/gamenodepb"
 )
 
@@ -103,8 +103,8 @@ func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
 func (gns *gameNodeServer) worker() (err error) {
 
 	// subscribe to backend channels
-	consumerCh := backends.NetSubscribe(gns.bkType | backends.CONSUMER)
-	defer backends.NetUnsubscribe(consumerCh)
+	consumerCh := broker.Subscribe(pubsub.Topic(gns.bkType + pubsub.CONSUMER))
+	defer broker.Unsubscribe(consumerCh)
 
 	slog.Debug(1, "client connected to stream '%s'", gns.bkName)
 	defer slog.Debug(1, "client disconnected from stream '%s'", gns.bkName)
@@ -137,7 +137,7 @@ func (gns *gameNodeServer) worker() (err error) {
 			slog.Debug(9, "stream '%s', read '%+v'", gns.bkName, inData)
 
 			// send the data to backends
-			backends.NetPublish(gns.bkType|backends.PRODUCER, inData)
+			broker.Publish(pubsub.Topic(gns.bkType|pubsub.PRODUCER), inData)
 
 		} // for...
 
@@ -172,7 +172,9 @@ func (gns *gameNodeServer) worker() (err error) {
 	return nil
 }
 
-func Start() error {
+var broker *pubsub.Pubsub
+
+func Run(brk *pubsub.Pubsub) error {
 
 	addrPort := "127.0.0.1:12346" // the default
 	if ap, err := sconf.ValAsStr("network", "listen"); err == nil {
@@ -188,6 +190,8 @@ func Start() error {
 	grpcServer := grpc.NewServer(opts...)
 
 	pb.RegisterGameNodeServer(grpcServer, newServer())
+
+	broker = brk
 
 	slog.Info("accepting gRPC at %s", addrPort)
 	grpcServer.Serve(lstn)

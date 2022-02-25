@@ -4,6 +4,11 @@ import "sync"
 
 // https://eli.thegreenplace.net/2020/pubsub-using-channels-in-go/
 
+const (
+	CONSUMER = 0x1000
+	PRODUCER = 0x2000
+)
+
 type Topic int32
 
 type Pubsub struct {
@@ -11,7 +16,7 @@ type Pubsub struct {
 	subs map[Topic][]chan interface{}
 }
 
-func NewPubsub() *Pubsub {
+func New() *Pubsub {
 	ps := &Pubsub{}
 	ps.subs = make(map[Topic][]chan interface{})
 	return ps
