@@ -9,12 +9,8 @@ import (
 	"gamenode/internal/backends"
 	"gamenode/internal/network"
 	"gamenode/internal/pubsub"
-	pb "gamenode/pkg/gamenodepb"
 
-	_ "gamenode/internal/backends/file"
-	_ "gamenode/internal/backends/joy"
-	_ "gamenode/internal/backends/kbd"
-	_ "gamenode/internal/backends/snd"
+	pb "gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/slog"
 )

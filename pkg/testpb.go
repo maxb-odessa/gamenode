@@ -41,7 +41,7 @@ func runJoy(client pb.GameNodeClient) {
 	jb := pb.JoyEvent_Button_{Button: &pb.JoyEvent_Button{Pressed: true, Color: "red"}}
 	jd := pb.JoyEvent{Obj: &jb}
 	jmsg := &pb.JoyMsg{
-		Name: "X52PRO",
+		Name: "x52pro",
 		Msg:  &pb.JoyMsg_Event{Event: &jd},
 	}
 
