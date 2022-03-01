@@ -176,10 +176,7 @@ var broker *pubsub.Pubsub
 
 func Run(brk *pubsub.Pubsub) error {
 
-	addrPort := "127.0.0.1:12346" // the default
-	if ap, err := sconf.ValAsStr("network", "listen"); err == nil {
-		addrPort = ap
-	}
+	addrPort := sconf.StrDef("network", "listen", "127.0.0.1:12346")
 
 	lstn, err := net.Listen("tcp", addrPort)
 	if err != nil {

@@ -26,11 +26,21 @@ func Init(confScope string) (interface{}, error) {
 
 	// read config here, do preps
 
+	// connect to joy device
+
 	return j, nil
 }
 
 func (j Joy) Run(broker *pubsub.Pubsub) error {
 	j.broker = broker
+
+	if err := j.writer(); err != nil {
+		return err
+	}
+
+	if err := j.reader(); err != nil {
+		return err
+	}
 
 	go j.producer()
 	go j.consumer()
@@ -38,9 +48,26 @@ func (j Joy) Run(broker *pubsub.Pubsub) error {
 	return nil
 }
 
-func (j Joy) producer() {
+func (j Joy) reader() error {
+	// connect to joy
 
-	// start device reader here
+	// start reading joy device
+
+	// push joy events into readCh
+
+	return nil
+}
+
+func (j Joy) writer() error {
+
+	// start reading joy events to apply
+
+	// write event to joy device
+
+	return nil
+}
+
+func (j Joy) producer() {
 
 	for {
 		// wait for joystick event to happen
@@ -61,8 +88,6 @@ func (j Joy) consumer() {
 	// subscribe to joy chan
 	ch := j.broker.Subscribe(pubsub.Topic(pb.Backend_JOY | pubsub.CONSUMER))
 	defer j.broker.Unsubscribe(ch)
-
-	// start device writer here
 
 	for {
 

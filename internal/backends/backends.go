@@ -2,8 +2,10 @@ package backends
 
 import (
 	"fmt"
+
 	"gamenode/internal/backends/file"
 	"gamenode/internal/backends/joy"
+
 	"gamenode/internal/pubsub"
 	pb "gamenode/pkg/gamenodepb"
 
@@ -35,7 +37,7 @@ func Run(broker *pubsub.Pubsub) error {
 	for _, confScope := range sconf.Scopes() {
 
 		// which backend type to run
-		bkt, err := sconf.ValAsStr(confScope, "backend")
+		bkt, err := sconf.Str(confScope, "backend")
 		if err != nil {
 			// it's ok, not all configured scopes are backends
 			continue
