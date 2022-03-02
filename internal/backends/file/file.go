@@ -17,6 +17,7 @@ type File struct {
 	name   string
 	broker *pubsub.Pubsub
 	dev    device
+	seqNo  int32
 }
 
 func Init(confScope string) (interface{}, error) {
@@ -48,33 +49,29 @@ func (f File) Run(broker *pubsub.Pubsub) error {
 	return nil
 }
 
-func (f File) reader() error {
-	// connect to file
-
-	// start reading file device
-
-	// push file events into readCh
-
-	return nil
-}
-
-func (f File) writer() error {
-
-	// not implemented: make an error and send it back
-
-	return nil
-}
-
 func (f File) producer() {
 
 	for {
+
 		// wait for file event to happen
 		s, _ := f.dev.read()
-		slog.Debug(9, "file line: '%s'", s)
+		slog.Debug(99, "file line: '%s'", s)
+
 		// make a PB message from the string
-		msg := pb.JoyMsg{}
+		f.seqNo++
+		retMsg := pb.FileMsg{
+			Name:  f.name,
+			SeqNo: f.seqNo,
+			Msg: &pb.FileMsg_Event{
+				Event: &pb.FileEvent{
+					Line: s,
+				},
+			},
+		}
+
 		// send msg to network module
-		f.broker.Publish(pubsub.Topic(pb.Backend_FILE|pubsub.PRODUCER), msg)
+		f.broker.Publish(pubsub.Topic(pb.Backend_FILE|pubsub.PRODUCER), retMsg)
+
 	} //for
 
 	return
@@ -101,10 +98,30 @@ func (f File) consumer() {
 				continue
 			}
 
-			// get data from PB message
-			// s := ...
-			// send data to device writer
-			f.dev.write("")
+			ev := fmsg.GetEvent()
+
+			// ignore non-event msgs
+			if ev == nil {
+				continue
+			}
+
+			// send event line to device
+			if err := f.dev.write(ev.GetLine()); err != nil {
+
+				// failed: compose an error msg and publish it back to router
+				retMsg := pb.FileMsg{
+					Name:  f.name,
+					SeqNo: fmsg.GetSeqNo(),
+					Msg: &pb.FileMsg_Error{
+						Error: &pb.Error{
+							Code: 1, // TODO: mnemonic error codes
+							Desc: err.Error(),
+						},
+					},
+				}
+				f.broker.Publish(pubsub.Topic(pb.Backend_FILE|pubsub.PRODUCER), retMsg)
+
+			}
 
 		} // select
 

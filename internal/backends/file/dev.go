@@ -45,6 +45,11 @@ func (h *handler) run() error {
 		return err
 	}
 
+	mode := sconf.StrDef(h.confScope, "mode", "read")
+	if mode != "read" {
+		return fmt.Errorf("unsupported mode '%s'", mode)
+	}
+
 	h.linesCh = make(chan string, 32) // TODO adjust buf size here
 	h.pathCh = make(chan string, 1)
 
@@ -88,9 +93,20 @@ func (h *handler) stop() {
 }
 
 func (h *handler) getRecentFile() string {
+
+	sortAsc := true
+
+	if sconf.StrDef(h.confScope, "sort", "asc") != "asc" {
+		sortAsc = false
+	}
+
 	if len(h.files) > 0 {
 		sort.Strings(h.files)
-		return h.files[len(h.files)-1]
+		if sortAsc {
+			return h.files[len(h.files)-1]
+		} else {
+			return h.files[0]
+		}
 	}
 
 	return ""
@@ -141,14 +157,27 @@ func (h *handler) watchDir() error {
 func (h *handler) tailFile() {
 	var err error
 
-	cfg := tail.Config{
+	cfgStart := tail.Config{
 		ReOpen: true,
 		Follow: true,
 		Poll:   true,
 		Location: &tail.SeekInfo{
 			Offset: 0,
-			Whence: io.SeekEnd},
+			Whence: io.SeekStart,
+		},
 	}
+
+	cfgEnd := tail.Config{
+		ReOpen: true,
+		Follow: true,
+		Poll:   true,
+		Location: &tail.SeekInfo{
+			Offset: 0,
+			Whence: io.SeekEnd,
+		},
+	}
+
+	cfg := cfgEnd
 
 	// we must have smth to start with in case of target file absence
 	h.tailer, _ = tail.TailFile("/dev/null", cfg)
@@ -173,7 +202,7 @@ func (h *handler) tailFile() {
 			h.tailer, err = tail.TailFile(path, cfg)
 
 			if !pathChanged {
-				cfg.Location.Whence = io.SeekStart
+				cfg = cfgStart
 				pathChanged = true
 			}
 
