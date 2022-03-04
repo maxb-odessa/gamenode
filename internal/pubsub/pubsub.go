@@ -43,19 +43,20 @@ func (ps *Pubsub) Publish(topic Topic, msg interface{}) {
 }
 
 func (ps *Pubsub) Unsubscribe(ch <-chan interface{}) {
-	ps.Lock()
-	defer ps.Unlock()
+	/*
+		ps.Lock()
+		defer ps.Unlock()
 
-	for _, subs := range ps.subs {
-		for idx, c := range subs {
-			if c == ch {
-				close(c)
-				subs = removeIdx(subs, idx)
-				return
+		for topic, subs := range ps.subs {
+			for idx, c := range subs {
+				if ch == c {
+					close(ch)
+					ps.subs[topic] = removeIdx(subs, idx)
+					return
+				}
 			}
 		}
-	}
-
+	*/
 }
 
 func removeIdx(c []chan interface{}, idx int) []chan interface{} {

@@ -103,7 +103,7 @@ func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
 func (gns *gameNodeServer) worker() (err error) {
 
 	// subscribe to backend channels
-	consumerCh := broker.Subscribe(pubsub.Topic(gns.bkType + pubsub.CONSUMER))
+	consumerCh := broker.Subscribe(pubsub.Topic(gns.bkType | pubsub.CONSUMER))
 	defer broker.Unsubscribe(consumerCh)
 
 	slog.Debug(1, "client connected to stream '%s'", gns.bkName)
@@ -190,7 +190,7 @@ func Run(brk *pubsub.Pubsub) error {
 
 	broker = brk
 
-	slog.Info("accepting gRPC at %s", addrPort)
+	slog.Info("serving gRPC at %s", addrPort)
 	go grpcServer.Serve(lstn)
 
 	return nil

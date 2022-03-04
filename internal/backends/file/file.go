@@ -9,8 +9,8 @@ import (
 
 type device interface {
 	run() error
-	read() (string, error)
-	write(string) error
+	read() (interface{}, error)
+	write(interface{}) error
 }
 
 type File struct {
@@ -23,7 +23,7 @@ type File struct {
 func Init(confScope string) (interface{}, error) {
 	var err error
 
-	slog.Debug(9, "file INIT %s", confScope)
+	slog.Debug(9, "INIT file backend, scope '%s'", confScope)
 
 	f := File{
 		name: confScope,
@@ -54,17 +54,18 @@ func (f File) producer() {
 	for {
 
 		// wait for file event to happen
-		s, _ := f.dev.read()
-		slog.Debug(99, "file line: '%s'", s)
+		o, _ := f.dev.read()
+		obj := o.(*pb.FileEvent_Line_)
+		slog.Debug(99, "file obj: %+vs", o)
 
-		// make a PB message from the string
+		// compose full PB message
 		f.seqNo++
 		retMsg := pb.FileMsg{
 			Name:  f.name,
 			SeqNo: f.seqNo,
 			Msg: &pb.FileMsg_Event{
 				Event: &pb.FileEvent{
-					Line: s,
+					Obj: obj,
 				},
 			},
 		}
@@ -86,19 +87,19 @@ func (f File) consumer() {
 	for {
 
 		select {
-		case msg, ok := <-ch:
+		case m, ok := <-ch:
 			if !ok {
 				return
 			}
 
-			fmsg := msg.(*pb.FileMsg)
+			msg := m.(*pb.FileMsg)
 
 			// discard msgs not ment for us
-			if f.name != fmsg.GetName() {
+			if f.name != msg.GetName() {
 				continue
 			}
 
-			ev := fmsg.GetEvent()
+			ev := msg.GetEvent()
 
 			// ignore non-event msgs
 			if ev == nil {
@@ -106,12 +107,12 @@ func (f File) consumer() {
 			}
 
 			// send event line to device
-			if err := f.dev.write(ev.GetLine()); err != nil {
+			if err := f.dev.write(ev.GetObj()); err != nil {
 
 				// failed: compose an error msg and publish it back to router
 				retMsg := pb.FileMsg{
 					Name:  f.name,
-					SeqNo: fmsg.GetSeqNo(),
+					SeqNo: msg.GetSeqNo(),
 					Msg: &pb.FileMsg_Error{
 						Error: &pb.Error{
 							Code: 1, // TODO: mnemonic error codes

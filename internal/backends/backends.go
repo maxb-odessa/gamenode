@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"gamenode/internal/backends/file"
-	"gamenode/internal/backends/joy"
+	"gamenode/internal/backends/kbd"
 
 	"gamenode/internal/pubsub"
 	pb "gamenode/pkg/gamenodepb"
@@ -24,8 +24,8 @@ type backendInitFunc func(string) (interface{}, error)
 // registered backends that we support
 var registeredBackends = map[pb.Backend_Type]backendInitFunc{
 	pb.Backend_FILE: file.Init,
-	pb.Backend_JOY:  joy.Init,
-	//pb.Backend_KBD:  kbd.Init,
+	//pb.Backend_JOY:  joy.Init,
+	pb.Backend_KBD: kbd.Init,
 	//pb.Backend_SND:  snd.Init,
 }
 

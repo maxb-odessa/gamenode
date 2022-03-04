@@ -11,11 +11,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-func runJoy(client pb.GameNodeClient) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func runFile(client pb.GameNodeClient) {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Second)
 	defer cancel()
 
-	stream, err := client.Joy(ctx)
+	stream, err := client.File(ctx)
 	if err != nil {
 		log.Fatalf("%v.GameNode(_) = _, %v", client, err)
 	}
@@ -34,22 +34,25 @@ func runJoy(client pb.GameNodeClient) {
 			if err != nil {
 				log.Fatalf("Failed to receive a note : %v", err)
 			}
-			log.Printf("Got joy message %+v", in)
+			log.Printf("Got file message %+v", in)
 		}
 	}()
+	/*
+		msg := pb.FileMsg{
+			Name:  "ed journal",
+			SeqNo: 99999,
+			Msg: &pb.FileMsg_Event{
+				Event: &pb.FileEvent{
+					Line: "must be skipped!",
+				},
+			},
+		}
 
-	jb := pb.JoyEvent_Button_{Button: &pb.JoyEvent_Button{Pressed: false, Color: "GREEN"}}
-	jd := pb.JoyEvent{Obj: &jb}
-	jmsg := &pb.JoyMsg{
-		Name: "ANOTHER X52PRO",
-		Msg:  &pb.JoyMsg_Event{Event: &jd},
-	}
-
-	if err := stream.Send(jmsg); err != nil {
-		log.Fatalf("Failed to send a note: %v", err)
-	}
-
-	time.Sleep(time.Second * 5)
+		if err := stream.Send(&msg); err != nil {
+			log.Fatalf("Failed to send a note: %v", err)
+		}
+	*/
+	time.Sleep(time.Second * 500)
 
 	stream.CloseSend()
 	<-waitc
@@ -64,5 +67,5 @@ func main() {
 	defer conn.Close()
 	client := pb.NewGameNodeClient(conn)
 
-	runJoy(client)
+	runFile(client)
 }

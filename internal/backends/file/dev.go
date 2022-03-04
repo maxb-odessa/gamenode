@@ -3,10 +3,13 @@ package file
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"time"
+
+	pb "gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
 	"github.com/maxb-odessa/slog"
@@ -36,7 +39,7 @@ func (h *handler) run() error {
 
 	// set files dir (default is current)
 	dir := sconf.StrDef(h.confScope, "dir", "./")
-	h.dir, _ = filepath.Abs(dir)
+	h.dir, _ = filepath.Abs(os.ExpandEnv(dir))
 	h.dir += "/"
 
 	// set files mask (default is *.log)
@@ -64,22 +67,27 @@ func (h *handler) run() error {
 	return nil
 }
 
-func (h *handler) read() (string, error) {
+func (h *handler) read() (interface{}, error) {
 
 	select {
 	case line, ok := <-h.linesCh:
 		if ok {
-			return line, nil
+			return &pb.FileEvent_Line_{
+				Line: &pb.FileEvent_Line{
+					Line: line,
+				},
+			}, nil
 		}
 	}
 
-	return "", nil
+	return nil, nil
 }
 
-func (h *handler) write(s string) error {
+func (h *handler) write(i interface{}) error {
 	return fmt.Errorf("not implemented")
 }
 
+/*
 func (h *handler) stop() {
 	// stop dir watcher
 	h.watcher.Close()
@@ -91,6 +99,7 @@ func (h *handler) stop() {
 	close(h.linesCh)
 	close(h.pathCh)
 }
+*/
 
 func (h *handler) getRecentFile() string {
 

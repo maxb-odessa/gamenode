@@ -21,12 +21,19 @@ message Backend {
 }
 
 message Error {
-    uint32 code = 1;
+    int32 code = 1;
     string desc = 2;
 }
 
 message FileEvent {
-    string line = 1;
+
+    message Line {
+        string line = 1;
+    }
+
+    oneof Obj {
+        Line line = 1;
+    }
 }
 
 
@@ -95,46 +102,65 @@ message KbdEvent {
 
 
 message SndEvent {
-    string track = 1;
-    uint32 volume = 2;
-    bool play = 3;
+
+    message Track {
+        string track = 1;
+        uint32 volume = 2;
+        bool play = 3;
+    }
+
+    oneof Obj {
+        Track track = 10;
+    }
 }
 
 
 
 message FileMsg {
+
     string name = 1;
+
     oneof Msg {
         FileEvent event = 2;
         Error error = 9;
     }
+
     int32 seqNo = 99;
 }
 
 message JoyMsg {
+
     string name = 1;
+
     oneof Msg {
         JoyEvent event = 2;
         Error error = 9;
     }
+
     int32 seqNo = 99;
 }
 
 message KbdMsg {
+
     string name = 1;
+
     oneof Msg {
         KbdEvent event = 2;
         Error error = 9;
     }
+
     int32 seqNo = 99;
 }
 
 message SndMsg {
+
     string name = 1;
+
     oneof Msg {
         SndEvent event = 2;
         Error error = 9;
     }
+
     int32 seqNo = 99;
 }
 
