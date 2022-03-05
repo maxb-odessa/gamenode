@@ -1,7 +1,7 @@
 package main
 
 import (
-	"gamenode/internal/router"
+	"github.com/maxb-odessa/gamenode/internal/router"
 
 	"github.com/pborman/getopt/v2"
 
@@ -41,5 +41,5 @@ func main() {
 		slog.Fatal("failed to start router: %s", err)
 	}
 
-	return nil
+	return
 }

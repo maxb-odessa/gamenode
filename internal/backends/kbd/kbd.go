@@ -1,8 +1,8 @@
 package kbd
 
 import (
-	"gamenode/internal/pubsub"
-	pb "gamenode/pkg/gamenodepb"
+	"github.com/maxb-odessa/gamenode/internal/pubsub"
+	pb "github.com/maxb-odessa/gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/slog"
 )

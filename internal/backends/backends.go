@@ -3,11 +3,11 @@ package backends
 import (
 	"fmt"
 
-	"gamenode/internal/backends/file"
-	"gamenode/internal/backends/kbd"
+	"github.com/maxb-odessa/gamenode/internal/backends/file"
+	"github.com/maxb-odessa/gamenode/internal/backends/kbd"
 
-	"gamenode/internal/pubsub"
-	pb "gamenode/pkg/gamenodepb"
+	"github.com/maxb-odessa/gamenode/internal/pubsub"
+	pb "github.com/maxb-odessa/gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
 )

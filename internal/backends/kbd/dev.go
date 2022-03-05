@@ -3,7 +3,7 @@ package kbd
 import (
 	"fmt"
 
-	pb "gamenode/pkg/gamenodepb"
+	pb "github.com/maxb-odessa/gamenode/pkg/gamenodepb"
 )
 
 type handler struct {

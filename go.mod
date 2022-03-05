@@ -1,4 +1,4 @@
-module gamenode
+module github.com/maxb-odessa/gamenode
 
 go 1.16
 

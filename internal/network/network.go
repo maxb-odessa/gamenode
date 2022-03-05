@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	"gamenode/internal/pubsub"
-	pb "gamenode/pkg/gamenodepb"
+	"github.com/maxb-odessa/gamenode/internal/pubsub"
+	pb "github.com/maxb-odessa/gamenode/pkg/gamenodepb"
 )
 
 type gameNodeServer struct {

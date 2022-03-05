@@ -9,7 +9,8 @@ import (
 	"sort"
 	"time"
 
-	pb "gamenode/pkg/gamenodepb"
+	//pb "gamenode/pkg/gamenodepb"
+	pb "github.com/maxb-odessa/gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
 	"github.com/maxb-odessa/slog"
@@ -151,7 +152,7 @@ func (h *handler) watchDir() error {
 					h.pathCh <- h.getRecentFile()
 				}
 			case err := <-h.watcher.Error:
-				slog.Err("%v\n", err)
+				slog.Err("file watcher error: %s", err)
 			case <-h.watcher.Closed:
 				return
 			}
@@ -203,7 +204,7 @@ func (h *handler) tailFile() {
 				break
 			}
 
-			slog.Debug(5, "tailer: watching '%s'\n", path)
+			slog.Debug(5, "tailer: watching '%s'", path)
 
 			h.tailer.Stop()
 			h.tailer.Cleanup()
@@ -216,7 +217,7 @@ func (h *handler) tailFile() {
 			}
 
 			if err != nil {
-				slog.Err("tailer: %v\n", err)
+				slog.Err("tailer: %v", err)
 			}
 
 		case line, ok := <-h.tailer.Lines:

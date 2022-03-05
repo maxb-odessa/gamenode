@@ -6,11 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gamenode/internal/backends"
-	"gamenode/internal/network"
-	"gamenode/internal/pubsub"
+	"github.com/maxb-odessa/gamenode/internal/backends"
+	"github.com/maxb-odessa/gamenode/internal/network"
+	"github.com/maxb-odessa/gamenode/internal/pubsub"
 
-	pb "gamenode/pkg/gamenodepb"
+	pb "github.com/maxb-odessa/gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/slog"
 )
