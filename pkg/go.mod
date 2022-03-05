@@ -1,4 +1,4 @@
-module gamenodepb
+module github.com/maxb-odessa/gamenode/pkg/gamenodepb
 
 go 1.16
 
