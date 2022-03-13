@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -23,10 +24,8 @@ type handler struct {
 	files     []string
 	dir       string
 	mask      *regexp.Regexp
-	tailer    *tail.Tail
 	linesCh   chan string
 	pathCh    chan string
-	watcher   *watcher.Watcher
 }
 
 func newDev(confScope string) *handler {
@@ -126,15 +125,15 @@ func (h *handler) watchDir() error {
 
 	// monitor the direcotory for newer file to appear
 
-	h.watcher = watcher.New()
-	h.watcher.FilterOps(watcher.Create)
-	h.watcher.AddFilterHook(watcher.RegexFilterHook(h.mask, false))
+	w := watcher.New()
+	w.FilterOps(watcher.Create)
+	w.AddFilterHook(watcher.RegexFilterHook(h.mask, false))
 
-	if err := h.watcher.Add(h.dir); err != nil {
+	if err := w.Add(h.dir); err != nil {
 		return err
 	}
 
-	for path, _ := range h.watcher.WatchedFiles() {
+	for path, _ := range w.WatchedFiles() {
 		h.files = append(h.files, path)
 	}
 
@@ -146,38 +145,47 @@ func (h *handler) watchDir() error {
 	go func() {
 		for {
 			select {
-			case event := <-h.watcher.Event:
+			case event := <-w.Event:
 				h.files = append(h.files, event.Path)
 				if rf := h.getRecentFile(); rf != "" {
 					h.pathCh <- h.getRecentFile()
 				}
-			case err := <-h.watcher.Error:
+			case err := <-w.Error:
 				slog.Err("file watcher error: %s", err)
-			case <-h.watcher.Closed:
+			case <-w.Closed:
 				return
 			}
 		}
 	}()
 
-	go h.watcher.Start(time.Second * 1)
+	go w.Start(time.Second * 1)
 
 	return nil
 }
 
 func (h *handler) tailFile() {
-	var err error
 
-	cfgStart := tail.Config{
-		ReOpen: true,
-		Follow: true,
-		Poll:   true,
-		Location: &tail.SeekInfo{
-			Offset: 0,
-			Whence: io.SeekStart,
-		},
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	cfgEnd := tail.Config{
+	for {
+
+		select {
+		case path, ok := <-h.pathCh:
+			if !ok {
+				break
+			}
+			cancel()
+			ctx, cancel = context.WithCancel(context.Background())
+			go h.realTailer(ctx, path)
+		} //select
+
+	} //for
+
+}
+
+func (h *handler) realTailer(ctx context.Context, path string) {
+
+	cfg := tail.Config{
 		ReOpen: true,
 		Follow: true,
 		Poll:   true,
@@ -187,49 +195,23 @@ func (h *handler) tailFile() {
 		},
 	}
 
-	cfg := cfgEnd
+	slog.Debug(5, "tailer: tailing '%s'", path)
+	tailer, err := tail.TailFile(path, cfg)
+	if err != nil {
+		slog.Err("tailer failed on '%s': %s", path, err)
+	}
 
-	// we must have smth to start with in case of target file absence
-	h.tailer, _ = tail.TailFile("/dev/null", cfg)
-
-	pathChanged := false
+	defer tailer.Stop()
+	defer tailer.Cleanup()
+	defer slog.Debug(5, "tailer: stopped tailing '%s'", path)
 
 	for {
-
 		select {
-
-		case path, ok := <-h.pathCh:
-
-			if !ok {
-				break
-			}
-
-			slog.Debug(5, "tailer: watching '%s'", path)
-
-			h.tailer.Stop()
-			h.tailer.Cleanup()
-
-			h.tailer, err = tail.TailFile(path, cfg)
-
-			if !pathChanged {
-				cfg = cfgStart
-				pathChanged = true
-			}
-
-			if err != nil {
-				slog.Err("tailer: %v", err)
-			}
-
-		case line, ok := <-h.tailer.Lines:
-
-			if !ok {
-				continue
-			}
-
+		case <-ctx.Done():
+			return
+		case line := <-tailer.Lines:
+			slog.Debug(9, "line")
 			h.linesCh <- line.Text
-
-		} //select
-
-	} //for
-
+		}
+	}
 }

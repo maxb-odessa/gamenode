@@ -56,7 +56,7 @@ func (f File) producer() {
 		// wait for file event to happen
 		o, _ := f.dev.read()
 		obj := o.(*pb.FileEvent_Line_)
-		slog.Debug(99, "file obj: %+vs", o)
+		slog.Debug(9, "file obj: %+v", o)
 
 		// compose full PB message
 		f.seqNo++
