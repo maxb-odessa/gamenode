@@ -11,7 +11,6 @@ import (
 	"time"
 
 	//pb "gamenode/pkg/gamenodepb"
-	pb "github.com/maxb-odessa/gamenode/pkg/gamenodepb"
 
 	"github.com/maxb-odessa/sconf"
 	"github.com/maxb-odessa/slog"
@@ -72,11 +71,7 @@ func (h *handler) read() (interface{}, error) {
 	select {
 	case line, ok := <-h.linesCh:
 		if ok {
-			return &pb.FileEvent_Line_{
-				Line: &pb.FileEvent_Line{
-					Line: line,
-				},
-			}, nil
+			return line, nil
 		}
 	}
 
@@ -210,7 +205,6 @@ func (h *handler) realTailer(ctx context.Context, path string) {
 		case <-ctx.Done():
 			return
 		case line := <-tailer.Lines:
-			slog.Debug(9, "line")
 			h.linesCh <- line.Text
 		}
 	}

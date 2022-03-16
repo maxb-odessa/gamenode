@@ -17,7 +17,6 @@ type File struct {
 	name   string
 	broker *pubsub.Pubsub
 	dev    device
-	seqNo  int32
 }
 
 func Init(confScope string) (interface{}, error) {
@@ -54,18 +53,20 @@ func (f File) producer() {
 	for {
 
 		// wait for file event to happen
-		o, _ := f.dev.read()
-		obj := o.(*pb.FileEvent_Line_)
-		slog.Debug(9, "file obj: %+v", o)
+		l, _ := f.dev.read()
+		line := l.(string)
+		slog.Debug(9, "file line: %s", line)
 
 		// compose full PB message
-		f.seqNo++
-		retMsg := pb.FileMsg{
-			Name:  f.name,
-			SeqNo: f.seqNo,
+		retMsg := &pb.FileMsg{
+			Name: f.name,
 			Msg: &pb.FileMsg_Event{
 				Event: &pb.FileEvent{
-					Obj: obj,
+					Obj: &pb.FileEvent_Line_{
+						Line: &pb.FileEvent_Line{
+							Line: line,
+						},
+					},
 				},
 			},
 		}
@@ -75,7 +76,6 @@ func (f File) producer() {
 
 	} //for
 
-	return
 }
 
 func (f File) consumer() {
@@ -110,9 +110,8 @@ func (f File) consumer() {
 			if err := f.dev.write(ev.GetObj()); err != nil {
 
 				// failed: compose an error msg and publish it back to router
-				retMsg := pb.FileMsg{
-					Name:  f.name,
-					SeqNo: msg.GetSeqNo(),
+				retMsg := &pb.FileMsg{
+					Name: f.name,
 					Msg: &pb.FileMsg_Error{
 						Error: &pb.Error{
 							Code: 1, // TODO: mnemonic error codes
@@ -128,5 +127,4 @@ func (f File) consumer() {
 
 	} //for
 
-	return
 }

@@ -17,7 +17,6 @@ type Kbd struct {
 	name   string
 	broker *pubsub.Pubsub
 	dev    device
-	seqNo  int32
 }
 
 func Init(confScope string) (interface{}, error) {
@@ -94,8 +93,7 @@ func (f Kbd) consumer() {
 
 				// failed: compose an error msg and publish it back to router
 				retMsg := pb.KbdMsg{
-					Name:  f.name,
-					SeqNo: msg.GetSeqNo(),
+					Name: f.name,
 					Msg: &pb.KbdMsg_Error{
 						Error: &pb.Error{
 							Code: 1, // TODO: mnemonic error codes

@@ -125,7 +125,6 @@ message FileMsg {
         Error error = 9;
     }
 
-    int32 seqNo = 99;
 }
 
 message JoyMsg {
@@ -137,7 +136,6 @@ message JoyMsg {
         Error error = 9;
     }
 
-    int32 seqNo = 99;
 }
 
 message KbdMsg {
@@ -149,7 +147,6 @@ message KbdMsg {
         Error error = 9;
     }
 
-    int32 seqNo = 99;
 }
 
 message SndMsg {
@@ -161,7 +158,6 @@ message SndMsg {
         Error error = 9;
     }
 
-    int32 seqNo = 99;
 }
 
 

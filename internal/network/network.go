@@ -34,8 +34,8 @@ func (gns *gameNodeServer) File(stream pb.GameNode_FileServer) error {
 		bkName: pb.Backend_Type_name[int32(pb.Backend_FILE)],
 		bkType: pb.Backend_FILE,
 		send: func(m interface{}) error {
-			d := m.(pb.FileMsg)
-			return stream.Send(&d)
+			d := m.(*pb.FileMsg)
+			return stream.Send(d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
@@ -52,8 +52,8 @@ func (gns *gameNodeServer) Joy(stream pb.GameNode_JoyServer) error {
 		bkName: pb.Backend_Type_name[int32(pb.Backend_JOY)],
 		bkType: pb.Backend_JOY,
 		send: func(m interface{}) error {
-			d := m.(pb.JoyMsg)
-			return stream.Send(&d)
+			d := m.(*pb.JoyMsg)
+			return stream.Send(d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
@@ -71,8 +71,8 @@ func (gns *gameNodeServer) Kbd(stream pb.GameNode_KbdServer) error {
 		bkName: pb.Backend_Type_name[int32(pb.Backend_KBD)],
 		bkType: pb.Backend_KBD,
 		send: func(m interface{}) error {
-			d := m.(pb.KbdMsg)
-			return stream.Send(&d)
+			d := m.(*pb.KbdMsg)
+			return stream.Send(d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
@@ -89,8 +89,8 @@ func (gns *gameNodeServer) Snd(stream pb.GameNode_SndServer) error {
 		bkName: pb.Backend_Type_name[int32(pb.Backend_SND)],
 		bkType: pb.Backend_SND,
 		send: func(m interface{}) error {
-			d := m.(pb.SndMsg)
-			return stream.Send(&d)
+			d := m.(*pb.SndMsg)
+			return stream.Send(d)
 		},
 		recv: func() (interface{}, error) {
 			return stream.Recv()
