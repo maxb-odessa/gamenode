@@ -128,8 +128,10 @@ func (h *handler) watchDir() error {
 		return err
 	}
 
-	for path, _ := range w.WatchedFiles() {
-		h.files = append(h.files, path)
+	for path, st := range w.WatchedFiles() {
+		if !st.IsDir() {
+			h.files = append(h.files, path)
+		}
 	}
 
 	if p := h.getRecentFile(); p != "" {
@@ -166,6 +168,7 @@ func (h *handler) tailFile() {
 
 		select {
 		case path, ok := <-h.pathCh:
+			slog.Debug(9, "tailer: file changed to: '%s'", path)
 			if !ok {
 				break
 			}
