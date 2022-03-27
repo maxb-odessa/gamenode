@@ -1,0 +1,17 @@
+# Simple systemd scenario for gamenode
+# - put it in @HOME@/.config/systemd/user/
+# - run: systemd --user reload-daemon
+# - use: systemctl --user <status|start|stop> gamenode
+###########################################################
+
+[Unit]
+Description = GameNode: interact with running games
+
+[Service]
+Type = simple
+StandardOutput = journal
+ExecStart = %h/.local/bin/gamenode -d9 -c %h/.local/etc/gamenode.conf
+
+[Install]
+WantedBy=default.target
+

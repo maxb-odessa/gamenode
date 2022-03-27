@@ -16,6 +16,8 @@ install: proto build
 	go install ./cmd/gamenode
 	mkdir -p ${SHAREDIR}
 	cp -f etc/gamenode.conf ${CONFDIR}
+	cp -f gamenode.service ${HOME}/.config/systemd/user
+	systemctl --user daemon-reload
 
 proto: pkg/gamenodepb/gamenodepb.pb.go
 
