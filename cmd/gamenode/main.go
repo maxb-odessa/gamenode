@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/maxb-odessa/gamenode/internal/router"
 
 	"github.com/pborman/getopt/v2"
@@ -14,7 +16,7 @@ func main() {
 	// get cmdline args and parse them
 	help := false
 	debug := 0
-	configFile := "etc/gamenode.conf"
+	configFile := os.ExpandEnv("$HOME/.local/etc/gamenode.conf")
 	getopt.HelpColumn = 0
 	getopt.FlagLong(&help, "help", 'h', "Show this help")
 	getopt.FlagLong(&debug, "debug", 'd', "Set debug log level")

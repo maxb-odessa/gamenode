@@ -5,12 +5,12 @@
 ###########################################################
 
 [Unit]
-Description = GameNode: interact with running games
+Description = GameNode: interact with running games (node server)
 
 [Service]
 Type = simple
 StandardOutput = journal
-ExecStart = %h/.local/bin/gamenode -d9 -c %h/.local/etc/gamenode.conf
+ExecStart = %h/.local/bin/gamenode -d9
 
 [Install]
 WantedBy=default.target
