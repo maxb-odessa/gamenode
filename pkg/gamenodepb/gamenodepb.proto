@@ -85,7 +85,7 @@ message JoyEvent {
 message KbdEvent {
  
     message Key {
-        string id = 1;
+        uint32 code = 1; // see /usr/include/linux/input-event-codes.h
         bool pressed = 2;
     }
 

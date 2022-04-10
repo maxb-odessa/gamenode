@@ -3,6 +3,7 @@ module github.com/maxb-odessa/gamenode
 go 1.16
 
 require (
+	github.com/bendahl/uinput v1.5.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/maxb-odessa/sconf v0.0.2
 	github.com/maxb-odessa/slog v0.0.1

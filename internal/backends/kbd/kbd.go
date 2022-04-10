@@ -24,47 +24,47 @@ func Init(confScope string) (interface{}, error) {
 
 	slog.Debug(9, "INIT kbd backend, scope '%s'", confScope)
 
-	f := Kbd{
+	k := Kbd{
 		name: confScope,
 		dev:  newDev(confScope),
 	}
 
 	// read config here, do preps
-	if err = f.dev.run(); err != nil {
+	if err = k.dev.run(); err != nil {
 		return nil, err
 	}
 
 	// start reading kbd
 
-	return f, nil
+	return k, nil
 }
 
-func (f Kbd) Run(broker *pubsub.Pubsub) error {
-	f.broker = broker
+func (k Kbd) Run(broker *pubsub.Pubsub) error {
+	k.broker = broker
 
-	go f.producer()
-	go f.consumer()
+	go k.producer()
+	go k.consumer()
 
 	return nil
 }
 
-func (f Kbd) producer() {
+func (k Kbd) producer() {
 
 	for {
 
 		// TODO: not implemented atm
-		f.dev.read()
+		k.dev.read()
 
 	} //for
 
 	return
 }
 
-func (f Kbd) consumer() {
+func (k Kbd) consumer() {
 
 	// subscribe to kbd chan
-	ch := f.broker.Subscribe(pubsub.Topic(pb.Backend_FILE | pubsub.CONSUMER))
-	defer f.broker.Unsubscribe(ch)
+	ch := k.broker.Subscribe(pubsub.Topic(pb.Backend_KBD | pubsub.CONSUMER))
+	defer k.broker.Unsubscribe(ch)
 
 	for {
 
@@ -77,7 +77,8 @@ func (f Kbd) consumer() {
 			msg := m.(*pb.KbdMsg)
 
 			// discard msgs not ment for us
-			if f.name != msg.GetName() {
+			if k.name != msg.GetName() {
+				slog.Debug(5, "KBD: msg named '%s' is not for '%s'", msg.GetName(), k.name)
 				continue
 			}
 
@@ -89,11 +90,11 @@ func (f Kbd) consumer() {
 			}
 
 			// send event line to device
-			if err := f.dev.write(ev.GetObj()); err != nil {
+			if err := k.dev.write(ev); err != nil {
 
 				// failed: compose an error msg and publish it back to router
 				retMsg := pb.KbdMsg{
-					Name: f.name,
+					Name: k.name,
 					Msg: &pb.KbdMsg_Error{
 						Error: &pb.Error{
 							Code: 1, // TODO: mnemonic error codes
@@ -101,7 +102,7 @@ func (f Kbd) consumer() {
 						},
 					},
 				}
-				f.broker.Publish(pubsub.Topic(pb.Backend_FILE|pubsub.PRODUCER), retMsg)
+				k.broker.Publish(pubsub.Topic(pb.Backend_KBD|pubsub.PRODUCER), retMsg)
 
 			}
 
